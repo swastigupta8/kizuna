@@ -10,8 +10,12 @@ _QUEUE_HINTS = ("kafka", "rabbitmq", "sqs")
 
 
 def parse_compose(path: str | Path) -> ArchitectureGraph:
-    raw = yaml.safe_load(Path(path).read_text())
-    services = raw.get("services") or {}
+    return parse_compose_text(Path(path).read_text())
+
+
+def parse_compose_text(yaml_text: str) -> ArchitectureGraph:
+    raw = yaml.safe_load(yaml_text)
+    services = (raw or {}).get("services") or {}
 
     nodes: list[Node] = []
     edges: list[Edge] = []
