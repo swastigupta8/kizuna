@@ -1,11 +1,15 @@
 import yaml
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 import db
 from models import Finding
 from parser import parse_compose_text
+from remediate import generate_remediations
 from score import compute_score
+
+load_dotenv()
 
 app = FastAPI(title="Kizuna")
 
@@ -15,6 +19,10 @@ class ScoreRequest(BaseModel):
     compose_yaml: str
 
 
+class FindingWithRemediation(Finding):
+    remediation: str | None = None
+
+
 class ScoreResponse(BaseModel):
     repo: str
     overall_score: float
@@ -22,7 +30,7 @@ class ScoreResponse(BaseModel):
     recovery_score: float
     redundancy_score: float
     degradation_score: float
-    findings: list[Finding]
+    findings: list[FindingWithRemediation]
 
 
 @app.get("/health")
@@ -43,6 +51,12 @@ def score_architecture(request: ScoreRequest) -> ScoreResponse:
     result = compute_score(graph)
     db.save_score_run(request.repo, result)
 
+    remediations = generate_remediations(result.findings)
+    findings_out = [
+        FindingWithRemediation(**finding.model_dump(), remediation=remediations.get(i))
+        for i, finding in enumerate(result.findings)
+    ]
+
     return ScoreResponse(
         repo=request.repo,
         overall_score=result.overall,
@@ -50,7 +64,7 @@ def score_architecture(request: ScoreRequest) -> ScoreResponse:
         recovery_score=result.recovery,
         redundancy_score=result.redundancy,
         degradation_score=result.degradation,
-        findings=result.findings,
+        findings=findings_out,
     )
 
 
