@@ -3,7 +3,7 @@ import json
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -36,6 +36,11 @@ class ScoreResponse(BaseModel):
     redundancy_score: float
     degradation_score: float
     findings: list[FindingWithRemediation]
+
+
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")
@@ -91,8 +96,16 @@ def score_history(repo: str, limit: int = 20) -> list[dict]:
 @app.get("/dashboard/{repo:path}", response_class=HTMLResponse)
 def dashboard(request: Request, repo: str):
     history = db.get_score_history(repo, limit=50)
+
+    # No history yet (or free-tier disk got wiped on redeploy) still renders a
+    # real page — a route a human visits in a browser should never come back
+    # as a bare 404, even when the underlying condition genuinely is "empty."
     if not history:
-        raise HTTPException(status_code=404, detail=f"no scores recorded yet for '{repo}'")
+        return templates.TemplateResponse(
+            request=request,
+            name="dashboard.html",
+            context={"repo": repo, "latest": None, "history_labels": [], "history_scores": []},
+        )
 
     latest = dict(history[0])
     latest["findings"] = json.loads(latest["findings_json"])

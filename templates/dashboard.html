@@ -67,6 +67,7 @@
   <h1>Kizuna</h1>
   <div class="repo">{{ repo }}</div>
 
+  {% if latest %}
   <div class="score-hero">
     <div class="big {{ 'good' if latest.overall_score >= 75 else ('warn' if latest.overall_score >= 50 else 'crit') }}">
       {{ "%.1f"|format(latest.overall_score) }}
@@ -109,10 +110,25 @@
     <div class="empty">No findings — clean bill of health.</div>
     {% endif %}
   </div>
+  {% else %}
+  <div class="card">
+    <h2>No scores recorded yet for <code>{{ repo }}</code></h2>
+    <p class="empty">
+      Render's free tier doesn't persist disk across restarts, so score history
+      resets whenever this service redeploys or spins down from inactivity —
+      that's expected, not broken. POST a compose file to
+      <code>/api/v1/score</code> to populate this page again:
+    </p>
+    <pre style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-top: 12px; overflow-x: auto; font-size: 0.82rem;"><code>curl -X POST https://kizuna-2iar.onrender.com/api/v1/score \
+  -H "Content-Type: application/json" \
+  -d '{"repo": "{{ repo }}", "compose_yaml": "..."}'</code></pre>
+  </div>
+  {% endif %}
 
   <footer>Kizuna — shift-left resilience scoring</footer>
 </div>
 
+{% if latest %}
 <script>
   new Chart(document.getElementById('historyChart'), {
     type: 'line',
@@ -134,5 +150,6 @@
     },
   });
 </script>
+{% endif %}
 </body>
 </html>

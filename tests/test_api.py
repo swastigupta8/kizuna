@@ -18,6 +18,12 @@ services:
 """
 
 
+def test_root_redirects_to_docs_instead_of_404ing():
+    resp = client.get("/", follow_redirects=False)
+    assert resp.status_code in (302, 307)
+    assert resp.headers["location"] == "/docs"
+
+
 def test_health_endpoint():
     resp = client.get("/health")
     assert resp.status_code == 200

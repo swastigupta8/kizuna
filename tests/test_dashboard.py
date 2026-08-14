@@ -18,10 +18,14 @@ services:
 """
 
 
-def test_dashboard_404s_when_nothing_has_been_scored_yet(tmp_path, monkeypatch):
+def test_dashboard_renders_a_friendly_empty_state_instead_of_a_bare_404(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", tmp_path / "dash-test.db")
     resp = client.get("/dashboard/nobody/nothing")
-    assert resp.status_code == 404
+
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+    assert "No scores recorded yet" in resp.text
+    assert "nobody/nothing" in resp.text
 
 
 def test_dashboard_renders_the_latest_score_and_findings(tmp_path, monkeypatch):
