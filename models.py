@@ -32,6 +32,18 @@ class Edge(BaseModel):
     target: str
 
 
+class Severity(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class Finding(BaseModel):
+    severity: Severity
+    node_id: str
+    message: str
+
+
 class ArchitectureGraph(BaseModel):
     nodes: list[Node]
     edges: list[Edge]
