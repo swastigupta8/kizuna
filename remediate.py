@@ -1,10 +1,11 @@
 import os
 
-import anthropic
+from google import genai
+from google.genai import types
 
 from models import Finding
 
-_MODEL = "claude-sonnet-5"
+_DEFAULT_MODEL = "gemini-2.5-flash"
 
 _SYSTEM_PROMPT = (
     "You are a senior site reliability engineer reviewing a resilience-scoring "
@@ -14,19 +15,19 @@ _SYSTEM_PROMPT = (
     "advice. Do not restate the finding itself."
 )
 
-_REMEDIATION_TOOL = {
-    "name": "submit_remediations",
-    "description": "Submit exactly one remediation suggestion per finding, referenced by index.",
-    "input_schema": {
-        "type": "object",
+_REMEDIATION_FUNCTION = types.FunctionDeclaration(
+    name="submit_remediations",
+    description="Submit exactly one remediation suggestion per finding, referenced by index.",
+    parameters={
+        "type": "OBJECT",
         "properties": {
             "remediations": {
-                "type": "array",
+                "type": "ARRAY",
                 "items": {
-                    "type": "object",
+                    "type": "OBJECT",
                     "properties": {
-                        "index": {"type": "integer", "description": "the finding's index, as given"},
-                        "suggestion": {"type": "string"},
+                        "index": {"type": "INTEGER", "description": "the finding's index, as given"},
+                        "suggestion": {"type": "STRING"},
                     },
                     "required": ["index", "suggestion"],
                 },
@@ -34,7 +35,7 @@ _REMEDIATION_TOOL = {
         },
         "required": ["remediations"],
     },
-}
+)
 
 
 def generate_remediations(findings: list[Finding]) -> dict[int, str]:
@@ -51,9 +52,11 @@ def generate_remediations(findings: list[Finding]) -> dict[int, str]:
     if not findings:
         return {}
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return {}
+
+    model = os.environ.get("GEMINI_MODEL", _DEFAULT_MODEL)
 
     findings_block = "\n".join(
         f"{i}. [{finding.severity.value}] {finding.node_id}: {finding.message}"
@@ -61,17 +64,23 @@ def generate_remediations(findings: list[Finding]) -> dict[int, str]:
     )
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=_MODEL,
-            max_tokens=1024,
-            system=_SYSTEM_PROMPT,
-            tools=[_REMEDIATION_TOOL],
-            tool_choice={"type": "tool", "name": "submit_remediations"},
-            messages=[{"role": "user", "content": f"Findings:\n\n{findings_block}"}],
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=model,
+            contents=f"Findings:\n\n{findings_block}",
+            config=types.GenerateContentConfig(
+                system_instruction=_SYSTEM_PROMPT,
+                tools=[types.Tool(function_declarations=[_REMEDIATION_FUNCTION])],
+                tool_config=types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(
+                        mode="ANY",
+                        allowed_function_names=["submit_remediations"],
+                    )
+                ),
+            ),
         )
-        tool_use = next(block for block in response.content if block.type == "tool_use")
-        remediations = tool_use.input["remediations"]
+        function_call = response.candidates[0].content.parts[0].function_call
+        remediations = function_call.args["remediations"]
     except Exception:
         # network error, auth failure, rate limit, malformed response — the
         # score must still return successfully either way.
