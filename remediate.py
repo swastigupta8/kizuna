@@ -5,7 +5,7 @@ from google.genai import types
 
 from models import Finding
 
-_DEFAULT_MODEL = "gemini-2.5-flash"
+_DEFAULT_MODEL = "gemini-3.5-flash"
 
 _SYSTEM_PROMPT = (
     "You are a senior site reliability engineer reviewing a resilience-scoring "
