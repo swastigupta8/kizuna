@@ -1,6 +1,10 @@
+import json
+
 import yaml
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 import db
@@ -12,6 +16,7 @@ from score import compute_score
 load_dotenv()
 
 app = FastAPI(title="Kizuna")
+templates = Jinja2Templates(directory="templates")
 
 
 class ScoreRequest(BaseModel):
@@ -49,13 +54,22 @@ def score_architecture(request: ScoreRequest) -> ScoreResponse:
         raise HTTPException(status_code=400, detail="no services found in compose file")
 
     result = compute_score(graph)
-    db.save_score_run(request.repo, result)
 
     remediations = generate_remediations(result.findings)
     findings_out = [
         FindingWithRemediation(**finding.model_dump(), remediation=remediations.get(i))
         for i, finding in enumerate(result.findings)
     ]
+
+    db.save_score_run(
+        request.repo,
+        result.overall,
+        result.blast_radius,
+        result.recovery,
+        result.redundancy,
+        result.degradation,
+        [finding.model_dump() for finding in findings_out],
+    )
 
     return ScoreResponse(
         repo=request.repo,
@@ -72,3 +86,26 @@ def score_architecture(request: ScoreRequest) -> ScoreResponse:
 def score_history(repo: str, limit: int = 20) -> list[dict]:
     # ":path" lets `repo` contain slashes — repo ids look like "owner/repo"
     return db.get_score_history(repo, limit=limit)
+
+
+@app.get("/dashboard/{repo:path}", response_class=HTMLResponse)
+def dashboard(request: Request, repo: str):
+    history = db.get_score_history(repo, limit=50)
+    if not history:
+        raise HTTPException(status_code=404, detail=f"no scores recorded yet for '{repo}'")
+
+    latest = dict(history[0])
+    latest["findings"] = json.loads(latest["findings_json"])
+
+    chronological = list(reversed(history))  # oldest -> newest, for the chart
+
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "repo": repo,
+            "latest": latest,
+            "history_labels": [row["created_at"] for row in chronological],
+            "history_scores": [row["overall_score"] for row in chronological],
+        },
+    )

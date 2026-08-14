@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kizuna — {{ repo }}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {
+    --bg: #f3f1ea;
+    --surface: #ffffff;
+    --ink: #1b1e1d;
+    --ink-soft: #4a4f4d;
+    --muted: #7c827f;
+    --border: #dcd8cd;
+    --accent: #2f7c74;
+    --good: #4f8f5c;
+    --good-bg: #e7f1e6;
+    --warn: #b9822f;
+    --warn-bg: #f7edda;
+    --crit: #b2503f;
+    --crit-bg: #f6e6e2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    padding: 40px 24px 80px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .repo { color: var(--muted); font-family: ui-monospace, Consolas, monospace; margin-bottom: 32px; }
+  .score-hero {
+    display: flex; align-items: baseline; gap: 20px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px 28px; margin-bottom: 20px;
+  }
+  .score-hero .big { font-size: 3rem; font-weight: 700; font-family: ui-monospace, Consolas, monospace; }
+  .score-hero .big.good { color: var(--good); }
+  .score-hero .big.warn { color: var(--warn); }
+  .score-hero .big.crit { color: var(--crit); }
+  .score-hero .meta { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+  .subscores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .subscore { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .subscore .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .subscore .value { font-size: 1.4rem; font-family: ui-monospace, Consolas, monospace; margin-top: 4px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
+  .card h2 { font-size: 1rem; margin: 0 0 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  tr:last-child td { border-bottom: none; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: 0.85em; }
+  .sev { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .sev.high { background: var(--crit-bg); color: var(--crit); }
+  .sev.medium { background: var(--warn-bg); color: var(--warn); }
+  .sev.low { background: var(--good-bg); color: var(--good); }
+  .remediation { color: var(--ink-soft); font-style: italic; }
+  .empty { color: var(--muted); padding: 8px 0; }
+  footer { color: var(--muted); font-size: 0.78rem; text-align: center; margin-top: 32px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Kizuna</h1>
+  <div class="repo">{{ repo }}</div>
+
+  <div class="score-hero">
+    <div class="big {{ 'good' if latest.overall_score >= 75 else ('warn' if latest.overall_score >= 50 else 'crit') }}">
+      {{ "%.1f"|format(latest.overall_score) }}
+    </div>
+    <div class="meta">
+      resilience score / 100<br>
+      last computed {{ latest.created_at }}
+    </div>
+  </div>
+
+  <div class="subscores">
+    <div class="subscore"><div class="label">Blast Radius</div><div class="value">{{ "%.1f"|format(latest.blast_radius_score) }}</div></div>
+    <div class="subscore"><div class="label">Recovery</div><div class="value">{{ "%.1f"|format(latest.recovery_score) }}</div></div>
+    <div class="subscore"><div class="label">Redundancy</div><div class="value">{{ "%.1f"|format(latest.redundancy_score) }}</div></div>
+    <div class="subscore"><div class="label">Degradation</div><div class="value">{{ "%.1f"|format(latest.degradation_score) }}</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Score history</h2>
+    <canvas id="historyChart" height="80"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Findings ({{ latest.findings|length }})</h2>
+    {% if latest.findings %}
+    <table>
+      <thead><tr><th>Severity</th><th>Node</th><th>Finding</th><th>Suggested fix</th></tr></thead>
+      <tbody>
+        {% for f in latest.findings %}
+        <tr>
+          <td><span class="sev {{ f.severity }}">{{ f.severity }}</span></td>
+          <td><code>{{ f.node_id }}</code></td>
+          <td>{{ f.message }}</td>
+          <td class="remediation">{{ f.remediation or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No findings — clean bill of health.</div>
+    {% endif %}
+  </div>
+
+  <footer>Kizuna — shift-left resilience scoring</footer>
+</div>
+
+<script>
+  new Chart(document.getElementById('historyChart'), {
+    type: 'line',
+    data: {
+      labels: {{ history_labels|tojson }},
+      datasets: [{
+        label: 'Overall score',
+        data: {{ history_scores|tojson }},
+        borderColor: '#2f7c74',
+        backgroundColor: 'rgba(47,124,116,0.12)',
+        fill: true,
+        tension: 0.25,
+        pointRadius: 3,
+      }],
+    },
+    options: {
+      scales: { y: { min: 0, max: 100 } },
+      plugins: { legend: { display: false } },
+    },
+  });
+</script>
+</body>
+</html>

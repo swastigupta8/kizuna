@@ -3,8 +3,6 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-from score import ScoreResult
-
 DB_PATH = Path(__file__).parent / "kizuna.db"
 
 _SCHEMA = """
@@ -29,7 +27,21 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     return conn
 
 
-def save_score_run(repo: str, result: ScoreResult, db_path: Path | None = None) -> int:
+def save_score_run(
+    repo: str,
+    overall_score: float,
+    blast_radius_score: float,
+    recovery_score: float,
+    redundancy_score: float,
+    degradation_score: float,
+    findings: list[dict],
+    db_path: Path | None = None,
+) -> int:
+    """
+    `findings` is plain dicts, already including any remediation text — this
+    module deliberately knows nothing about ScoreResult or the LLM layer, it
+    just persists whatever finished JSON it's handed.
+    """
     conn = get_connection(db_path)
     with conn:
         cursor = conn.execute(
@@ -41,12 +53,12 @@ def save_score_run(repo: str, result: ScoreResult, db_path: Path | None = None) 
             """,
             (
                 repo,
-                result.overall,
-                result.blast_radius,
-                result.recovery,
-                result.redundancy,
-                result.degradation,
-                json.dumps([finding.model_dump() for finding in result.findings]),
+                overall_score,
+                blast_radius_score,
+                recovery_score,
+                redundancy_score,
+                degradation_score,
+                json.dumps(findings),
                 datetime.now(UTC).isoformat(),
             ),
         )

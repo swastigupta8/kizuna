@@ -5,3 +5,4 @@ pytest
 httpx
 anthropic
 python-dotenv
+jinja2
