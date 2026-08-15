@@ -3,7 +3,7 @@ import json
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -38,9 +38,9 @@ class ScoreResponse(BaseModel):
     findings: list[FindingWithRemediation]
 
 
-@app.get("/", include_in_schema=False)
-def root() -> RedirectResponse:
-    return RedirectResponse(url="/docs")
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def root(request: Request):
+    return templates.TemplateResponse(request=request, name="upload.html", context={})
 
 
 @app.get("/health")

@@ -18,10 +18,11 @@ services:
 """
 
 
-def test_root_redirects_to_docs_instead_of_404ing():
-    resp = client.get("/", follow_redirects=False)
-    assert resp.status_code in (302, 307)
-    assert resp.headers["location"] == "/docs"
+def test_root_serves_the_upload_landing_page_instead_of_404ing():
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+    assert "Score your architecture" in resp.text
 
 
 def test_health_endpoint():
