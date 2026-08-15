@@ -37,7 +37,8 @@ def test_dashboard_renders_the_latest_score_and_findings(tmp_path, monkeypatch):
     assert resp.status_code == 200
     assert "text/html" in resp.headers["content-type"]
     assert "demo/repo" in resp.text
-    assert "resilience score" in resp.text
+    assert "Resilience Score" in resp.text
+    assert "ring-number" in resp.text
 
 
 def test_dashboard_score_history_feeds_the_chart_data(tmp_path, monkeypatch):

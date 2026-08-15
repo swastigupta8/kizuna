@@ -4,122 +4,262 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kizuna — {{ repo }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,560;9..144,650&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   :root {
-    --bg: #f3f1ea;
+    --bg: #f6f4ef;
     --surface: #ffffff;
-    --ink: #1b1e1d;
-    --ink-soft: #4a4f4d;
-    --muted: #7c827f;
-    --border: #dcd8cd;
-    --accent: #2f7c74;
-    --good: #4f8f5c;
-    --good-bg: #e7f1e6;
-    --warn: #b9822f;
-    --warn-bg: #f7edda;
-    --crit: #b2503f;
-    --crit-bg: #f6e6e2;
+    --surface-2: #efece4;
+    --ink: #1c1a17;
+    --ink-soft: #57544d;
+    --muted: #8d897e;
+    --border: #e2ded3;
+    --accent: #a8703a;
+    --accent-soft: #f4e8d8;
+    --accent-strong: #8a5a2c;
+    --good: #4c8a5a; --good-soft: #e6f0e6;
+    --warn: #b8842e; --warn-soft: #f7edd9;
+    --crit: #a8455e; --crit-soft: #f5e3e8;
+    --shadow: 0 1px 2px rgba(28,26,23,0.05), 0 12px 32px rgba(28,26,23,0.06);
+    --shadow-lift: 0 4px 8px rgba(28,26,23,0.06), 0 20px 40px rgba(28,26,23,0.10);
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131419;
+      --surface: #1a1c23;
+      --surface-2: #20222a;
+      --ink: #f1efe8;
+      --ink-soft: #c2bfb6;
+      --muted: #86899a;
+      --border: #2a2c36;
+      --accent: #d9a866;
+      --accent-soft: #2c2417;
+      --accent-strong: #ecc084;
+      --good: #7cbb8a; --good-soft: #1b2a1f;
+      --warn: #dcae5f; --warn-soft: #2e2617;
+      --crit: #dd8aa0; --crit-soft: #33212a;
+      --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.4);
+      --shadow-lift: 0 4px 10px rgba(0,0,0,0.4), 0 24px 48px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131419; --surface: #1a1c23; --surface-2: #20222a;
+    --ink: #f1efe8; --ink-soft: #c2bfb6; --muted: #86899a; --border: #2a2c36;
+    --accent: #d9a866; --accent-soft: #2c2417; --accent-strong: #ecc084;
+    --good: #7cbb8a; --good-soft: #1b2a1f;
+    --warn: #dcae5f; --warn-soft: #2e2617;
+    --crit: #dd8aa0; --crit-soft: #33212a;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.4);
+    --shadow-lift: 0 4px 10px rgba(0,0,0,0.4), 0 24px 48px rgba(0,0,0,0.5);
+  }
+
   * { box-sizing: border-box; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
   body {
     margin: 0;
-    background: var(--bg);
+    background:
+      radial-gradient(1200px 600px at 12% -10%, color-mix(in srgb, var(--accent) 9%, transparent), transparent),
+      var(--bg);
     color: var(--ink);
-    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
-    padding: 40px 24px 80px;
+    font-family: "Manrope", -apple-system, "Segoe UI", sans-serif;
+    padding: 56px 24px 96px;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 900px; margin: 0 auto; }
-  h1 { font-size: 1.6rem; margin: 0 0 4px; }
-  .repo { color: var(--muted); font-family: ui-monospace, Consolas, monospace; margin-bottom: 32px; }
+
+  .wrap { max-width: 940px; margin: 0 auto; animation: rise 0.5s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .brand { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .brand .mark { font-family: "Fraunces", serif; font-size: 1.5rem; font-weight: 650; letter-spacing: -0.01em; }
+  .brand .tag { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .repo {
+    color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: 0.92rem;
+    margin-bottom: 40px; display: flex; align-items: center; gap: 8px;
+  }
+  .repo::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  /* ---------- Score hero ---------- */
   .score-hero {
-    display: flex; align-items: baseline; gap: 20px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 24px 28px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 36px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 24px;
+    padding: 36px 40px; margin-bottom: 24px; box-shadow: var(--shadow);
   }
-  .score-hero .big { font-size: 3rem; font-weight: 700; font-family: ui-monospace, Consolas, monospace; }
-  .score-hero .big.good { color: var(--good); }
-  .score-hero .big.warn { color: var(--warn); }
-  .score-hero .big.crit { color: var(--crit); }
-  .score-hero .meta { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
-  .subscores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-  .subscore { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-  .subscore .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-  .subscore .value { font-size: 1.4rem; font-family: ui-monospace, Consolas, monospace; margin-top: 4px; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
-  .card h2 { font-size: 1rem; margin: 0 0 14px; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; }
-  tr:last-child td { border-bottom: none; }
-  code { font-family: ui-monospace, Consolas, monospace; font-size: 0.85em; }
-  .sev { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-  .sev.high { background: var(--crit-bg); color: var(--crit); }
-  .sev.medium { background: var(--warn-bg); color: var(--warn); }
-  .sev.low { background: var(--good-bg); color: var(--good); }
-  .remediation { color: var(--ink-soft); font-style: italic; }
-  .empty { color: var(--muted); padding: 8px 0; }
-  footer { color: var(--muted); font-size: 0.78rem; text-align: center; margin-top: 32px; }
+  .ring-wrap { position: relative; width: 148px; height: 148px; flex-shrink: 0; }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--surface-2); stroke-width: 10; }
+  .ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1); }
+  .ring-fill.good { stroke: var(--good); } .ring-fill.warn { stroke: var(--warn); } .ring-fill.crit { stroke: var(--crit); }
+  .ring-number {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; font-family: "Fraunces", serif;
+  }
+  .ring-number .n { font-size: 2.6rem; font-weight: 560; line-height: 1; letter-spacing: -0.02em; }
+  .ring-number .d { font-size: 0.68rem; color: var(--muted); font-family: "Manrope", sans-serif; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; }
+
+  .hero-meta h1 { font-family: "Fraunces", serif; font-size: 1.5rem; font-weight: 560; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .hero-meta .timestamp { color: var(--muted); font-size: 0.86rem; }
+  .hero-meta .verdict { margin-top: 14px; display: inline-flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 600; padding: 6px 14px; border-radius: 999px; }
+  .verdict.good { background: var(--good-soft); color: var(--good); }
+  .verdict.warn { background: var(--warn-soft); color: var(--warn); }
+  .verdict.crit { background: var(--crit-soft); color: var(--crit); }
+
+  /* ---------- Subscores ---------- */
+  .subscores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .subscore {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 20px; box-shadow: var(--shadow); transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .subscore:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+  .subscore .label { font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .subscore .value { font-family: "Fraunces", serif; font-size: 1.9rem; font-weight: 560; margin-top: 6px; letter-spacing: -0.01em; }
+  .subscore .bar { height: 4px; border-radius: 999px; background: var(--surface-2); margin-top: 12px; overflow: hidden; }
+  .subscore .bar-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width 1s cubic-bezier(0.22, 1, 0.36, 1); }
+
+  /* ---------- Cards ---------- */
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 28px 32px; margin-bottom: 24px; box-shadow: var(--shadow);
+  }
+  .card h2 { font-family: "Fraunces", serif; font-size: 1.1rem; font-weight: 560; margin: 0 0 18px; }
+  .card h2 .count { color: var(--muted); font-family: "Manrope", sans-serif; font-weight: 600; font-size: 0.85rem; }
+
+  /* ---------- Findings ---------- */
+  .finding {
+    display: flex; gap: 16px; padding: 16px 0; border-top: 1px solid var(--border);
+  }
+  .finding:first-child { border-top: none; padding-top: 0; }
+  .finding-bar { width: 3px; border-radius: 999px; flex-shrink: 0; align-self: stretch; }
+  .finding.high .finding-bar { background: var(--crit); }
+  .finding.medium .finding-bar { background: var(--warn); }
+  .finding.low .finding-bar { background: var(--good); }
+  .finding-content { flex: 1; min-width: 0; }
+  .finding-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .finding-node { font-family: "JetBrains Mono", monospace; font-size: 0.86rem; font-weight: 600; }
+  .sev-chip { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 9px; border-radius: 999px; }
+  .sev-chip.high { background: var(--crit-soft); color: var(--crit); }
+  .sev-chip.medium { background: var(--warn-soft); color: var(--warn); }
+  .sev-chip.low { background: var(--good-soft); color: var(--good); }
+  .finding-message { color: var(--ink-soft); font-size: 0.94rem; line-height: 1.5; }
+  .finding-remediation {
+    margin-top: 10px; font-size: 0.88rem; color: var(--ink-soft); line-height: 1.55;
+    background: var(--accent-soft); border-radius: 10px; padding: 10px 14px;
+  }
+  .finding-remediation .tag { color: var(--accent-strong); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; }
+  .empty-findings { color: var(--muted); font-size: 0.94rem; padding: 4px 0; }
+
+  /* ---------- Empty state ---------- */
+  .empty-state p { color: var(--ink-soft); line-height: 1.6; margin-top: 8px; }
+  .empty-state code { font-family: "JetBrains Mono", monospace; background: var(--surface-2); padding: 2px 6px; border-radius: 5px; font-size: 0.88em; }
+  .empty-state pre {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-top: 16px; overflow-x: auto; font-size: 0.82rem; line-height: 1.6;
+  }
+  .empty-state pre code { background: none; padding: 0; }
+
+  footer { color: var(--muted); font-size: 0.8rem; text-align: center; margin-top: 40px; letter-spacing: 0.02em; }
+
+  @media (max-width: 640px) {
+    .score-hero { flex-direction: column; align-items: flex-start; gap: 24px; }
+    .subscores { grid-template-columns: repeat(2, 1fr); }
+    .card { padding: 22px 20px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Kizuna</h1>
+  <div class="brand"><span class="mark">Kizuna</span><span class="tag">Resilience Report</span></div>
   <div class="repo">{{ repo }}</div>
 
   {% if latest %}
+  {% set circumference = 2 * 3.14159265 * 54 %}
+  {% set offset = circumference * (1 - latest.overall_score / 100) %}
+  {% set tier = 'good' if latest.overall_score >= 75 else ('warn' if latest.overall_score >= 50 else 'crit') %}
+
   <div class="score-hero">
-    <div class="big {{ 'good' if latest.overall_score >= 75 else ('warn' if latest.overall_score >= 50 else 'crit') }}">
-      {{ "%.1f"|format(latest.overall_score) }}
+    <div class="ring-wrap">
+      <svg viewBox="0 0 120 120">
+        <circle class="ring-bg" cx="60" cy="60" r="54" />
+        <circle class="ring-fill {{ tier }}" cx="60" cy="60" r="54"
+          stroke-dasharray="{{ circumference }}" stroke-dashoffset="{{ offset }}" />
+      </svg>
+      <div class="ring-number">
+        <span class="n">{{ "%.0f"|format(latest.overall_score) }}</span>
+        <span class="d">/ 100</span>
+      </div>
     </div>
-    <div class="meta">
-      resilience score / 100<br>
-      last computed {{ latest.created_at }}
+    <div class="hero-meta">
+      <h1>Resilience Score</h1>
+      <div class="timestamp">Last computed {{ latest.created_at }}</div>
+      <div class="verdict {{ tier }}">
+        {% if tier == 'good' %}● Healthy architecture{% elif tier == 'warn' %}● Needs attention{% else %}● At risk{% endif %}
+      </div>
     </div>
   </div>
 
   <div class="subscores">
-    <div class="subscore"><div class="label">Blast Radius</div><div class="value">{{ "%.1f"|format(latest.blast_radius_score) }}</div></div>
-    <div class="subscore"><div class="label">Recovery</div><div class="value">{{ "%.1f"|format(latest.recovery_score) }}</div></div>
-    <div class="subscore"><div class="label">Redundancy</div><div class="value">{{ "%.1f"|format(latest.redundancy_score) }}</div></div>
-    <div class="subscore"><div class="label">Degradation</div><div class="value">{{ "%.1f"|format(latest.degradation_score) }}</div></div>
+    <div class="subscore">
+      <div class="label">Blast Radius</div>
+      <div class="value">{{ "%.0f"|format(latest.blast_radius_score) }}</div>
+      <div class="bar"><div class="bar-fill" style="width: {{ latest.blast_radius_score }}%"></div></div>
+    </div>
+    <div class="subscore">
+      <div class="label">Recovery</div>
+      <div class="value">{{ "%.0f"|format(latest.recovery_score) }}</div>
+      <div class="bar"><div class="bar-fill" style="width: {{ latest.recovery_score }}%"></div></div>
+    </div>
+    <div class="subscore">
+      <div class="label">Redundancy</div>
+      <div class="value">{{ "%.0f"|format(latest.redundancy_score) }}</div>
+      <div class="bar"><div class="bar-fill" style="width: {{ latest.redundancy_score }}%"></div></div>
+    </div>
+    <div class="subscore">
+      <div class="label">Degradation</div>
+      <div class="value">{{ "%.0f"|format(latest.degradation_score) }}</div>
+      <div class="bar"><div class="bar-fill" style="width: {{ latest.degradation_score }}%"></div></div>
+    </div>
   </div>
 
   <div class="card">
     <h2>Score history</h2>
-    <canvas id="historyChart" height="80"></canvas>
+    <canvas id="historyChart" height="70"></canvas>
   </div>
 
   <div class="card">
-    <h2>Findings ({{ latest.findings|length }})</h2>
+    <h2>Findings <span class="count">({{ latest.findings|length }})</span></h2>
     {% if latest.findings %}
-    <table>
-      <thead><tr><th>Severity</th><th>Node</th><th>Finding</th><th>Suggested fix</th></tr></thead>
-      <tbody>
-        {% for f in latest.findings %}
-        <tr>
-          <td><span class="sev {{ f.severity }}">{{ f.severity }}</span></td>
-          <td><code>{{ f.node_id }}</code></td>
-          <td>{{ f.message }}</td>
-          <td class="remediation">{{ f.remediation or "—" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+      {% for f in latest.findings %}
+      <div class="finding {{ f.severity }}">
+        <div class="finding-bar"></div>
+        <div class="finding-content">
+          <div class="finding-head">
+            <span class="finding-node">{{ f.node_id }}</span>
+            <span class="sev-chip {{ f.severity }}">{{ f.severity }}</span>
+          </div>
+          <div class="finding-message">{{ f.message }}</div>
+          {% if f.remediation %}
+          <div class="finding-remediation"><span class="tag">Suggested fix</span>{{ f.remediation }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
     {% else %}
-    <div class="empty">No findings — clean bill of health.</div>
+    <div class="empty-findings">No findings — clean bill of health.</div>
     {% endif %}
   </div>
   {% else %}
-  <div class="card">
+  <div class="card empty-state">
     <h2>No scores recorded yet for <code>{{ repo }}</code></h2>
-    <p class="empty">
+    <p>
       Render's free tier doesn't persist disk across restarts, so score history
       resets whenever this service redeploys or spins down from inactivity —
       that's expected, not broken. POST a compose file to
       <code>/api/v1/score</code> to populate this page again:
     </p>
-    <pre style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-top: 12px; overflow-x: auto; font-size: 0.82rem;"><code>curl -X POST https://kizuna-2iar.onrender.com/api/v1/score \
+    <pre><code>curl -X POST https://kizuna-2iar.onrender.com/api/v1/score \
   -H "Content-Type: application/json" \
   -d '{"repo": "{{ repo }}", "compose_yaml": "..."}'</code></pre>
   </div>
@@ -130,6 +270,20 @@
 
 {% if latest %}
 <script>
+  const styles = getComputedStyle(document.documentElement);
+  const accent = styles.getPropertyValue('--accent').trim();
+  const muted = styles.getPropertyValue('--muted').trim();
+  const border = styles.getPropertyValue('--border').trim();
+  const surface = styles.getPropertyValue('--surface').trim();
+  const ink = styles.getPropertyValue('--ink').trim();
+
+  const gradient = (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 220);
+    g.addColorStop(0, accent + '33');
+    g.addColorStop(1, accent + '00');
+    return g;
+  };
+
   new Chart(document.getElementById('historyChart'), {
     type: 'line',
     data: {
@@ -137,16 +291,31 @@
       datasets: [{
         label: 'Overall score',
         data: {{ history_scores|tojson }},
-        borderColor: '#2f7c74',
-        backgroundColor: 'rgba(47,124,116,0.12)',
+        borderColor: accent,
+        backgroundColor: (context) => gradient(context.chart.ctx),
         fill: true,
-        tension: 0.25,
+        tension: 0.35,
         pointRadius: 3,
+        pointBackgroundColor: accent,
+        pointBorderColor: surface,
+        pointBorderWidth: 2,
+        borderWidth: 2.5,
       }],
     },
     options: {
-      scales: { y: { min: 0, max: 100 } },
-      plugins: { legend: { display: false } },
+      responsive: true,
+      scales: {
+        y: { min: 0, max: 100, grid: { color: border }, ticks: { color: muted, font: { family: 'Manrope' } } },
+        x: { grid: { display: false }, ticks: { color: muted, font: { family: 'Manrope' } } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: surface, titleColor: ink, bodyColor: ink,
+          borderColor: border, borderWidth: 1, padding: 10, cornerRadius: 8,
+          titleFont: { family: 'Manrope', weight: '600' }, bodyFont: { family: 'JetBrains Mono' },
+        },
+      },
     },
   });
 </script>
