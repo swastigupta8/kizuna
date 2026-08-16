@@ -1,12 +1,12 @@
 # Kizuna
 
-I kept running into the same idea while reading about SRE postmortems: teams almost always say "we should have caught this at design time," but there's no widely-used tool that actually does that for reliability — the way `terraform plan`, security scanners, and test coverage gates already do for their own domains. So I built one.
+I kept running into the same idea while reading about SRE postmortems: teams almost always say "we should have caught this at design time," but there's no widely-used tool that actually does that for reliability, the way `terraform plan`, security scanners, and test coverage gates already do for their own domains. So I built one.
 
 **Kizuna reads a `docker-compose.yml`, scores the architecture for resilience, explains what's wrong in plain English, and can automatically fail a GitHub pull request before a fragile change ever merges.**
 
 **Live app:** [kizuna-2iar.onrender.com](https://kizuna-2iar.onrender.com) · **A real PR the gate actually caught:** [kizuna-demo #1](https://github.com/swastigupta8/kizuna-demo/pull/1)
 
-(Quick naming note: this project was called "Chronos" early on. Kizuna — 絆, Japanese for "bond" or "tie" — felt more honest once the scope settled, since the whole thing is really just about the ties between services and what happens when one breaks.)
+(Quick naming note: Kizuna — 絆, Japanese for "bond" or "tie", since the whole thing is really just about the ties between services and what happens when one breaks.)
 
 ## What it actually does
 
@@ -23,13 +23,20 @@ I kept running into the same idea while reading about SRE postmortems: teams alm
 
 Same scoring engine, four different architectures, spanning the full range from "genuinely solid" to "one outage away from a bad night."
 
-*(add screenshot of the excellent-tier dashboard here — 86/100)*
+- Demo of Excellent Architectural Score
+<img width="1919" height="1026" alt="image" src="https://github.com/user-attachments/assets/fa0f9b62-e12d-43ce-887b-e766206ad94a" />
+<img width="1919" height="602" alt="image" src="https://github.com/user-attachments/assets/68990f61-9a65-489c-a128-3552d85b14bb" />
 
-*(add screenshot of the healthy-tier dashboard here — 82.5/100)*
+- Demo of Medium Level Architectural Score
+<img width="1917" height="1023" alt="image" src="https://github.com/user-attachments/assets/9136a5bb-3eae-49c4-8d28-331936729359" />
+<img width="1919" height="1026" alt="image" src="https://github.com/user-attachments/assets/0173a2f2-964e-4397-959b-091115fa2d37" />
+<img width="1918" height="1035" alt="image" src="https://github.com/user-attachments/assets/76361aa5-6a00-4893-97be-d7b2a20352c8" />
 
-*(add screenshot of the needs-attention dashboard here — 71/100)*
+- Demo of an At Risk Architectural Score
+<img width="1919" height="1025" alt="image" src="https://github.com/user-attachments/assets/0ee9bc6e-7508-4b52-989b-af1c8d44357b" />
+<img width="1919" height="1030" alt="image" src="https://github.com/user-attachments/assets/4bc85d68-a887-40ff-b21c-b2705a1041b6" />
+<img width="1919" height="968" alt="image" src="https://github.com/user-attachments/assets/14ab652e-f8f4-4c81-beb1-20f18fded2ce" />
 
-*(add screenshot of the at-risk dashboard here — 49.8/100)*
 
 Every one of those is a real compose file run through the real engine — see [`demo-repo/scenarios/`](demo-repo/scenarios/) if you want to check my work.
 
@@ -39,7 +46,7 @@ Every one of those is a real compose file run through the real engine — see [`
 
 No signup, no CLI, no account needed anywhere. Go to **[kizuna-2iar.onrender.com](https://kizuna-2iar.onrender.com)**, drop in a `docker-compose.yml`, give it a project name, and you'll land on a dashboard within a few seconds.
 
-*(add screenshot of the upload page here)*
+<img width="1919" height="878" alt="image" src="https://github.com/user-attachments/assets/9904db13-7fd4-4c12-ad37-6e9eb9bf313e" />
 
 One thing worth knowing before you try your own file: a plain compose file with no labels will score low, and that's not a bug — Kizuna can't see a circuit breaker in your actual code, only in labels you add telling it one exists (`kizuna.circuit_breaker=true`, `kizuna.timeout_ms=2000`, etc.). The upload page has a "What should be in the file?" section with the exact format if you want to see your real setup reflected accurately.
 
@@ -105,6 +112,3 @@ Being upfront about what's not solved here yet:
 - No rate limiting on the scoring endpoint yet.
 - The resilience-factor constants (a circuit breaker absorbs 60% of propagated severity, a bare retry absorbs 20%) were chosen because they're plausible, not because they're empirically calibrated against real systems.
 
-## License
-
-MIT
