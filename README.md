@@ -1,45 +1,47 @@
 # Kizuna
 
-**A shift-left resilience gate for microservice architectures.** Kizuna reads a `docker-compose.yml`, scores the architecture for resilience using graph theory and a real cascade simulation, explains what's wrong in plain English via an LLM, and can automatically fail a GitHub pull request before a fragile change ever merges.
+I kept running into the same idea while reading about SRE postmortems: teams almost always say "we should have caught this at design time," but there's no widely-used tool that actually does that for reliability — the way `terraform plan`, security scanners, and test coverage gates already do for their own domains. So I built one.
 
-**Live app:** [kizuna-2iar.onrender.com](https://kizuna-2iar.onrender.com) · **Demo repo with a real merged PR:** [kizuna-demo #1](https://github.com/swastigupta8/kizuna-demo/pull/1)
+**Kizuna reads a `docker-compose.yml`, scores the architecture for resilience, explains what's wrong in plain English, and can automatically fail a GitHub pull request before a fragile change ever merges.**
 
-Kizuna is a rename of an earlier working title, "Chronos" — 絆 (*kizuna*) is Japanese for "bond" or "tie," which is what the dependency edges in the architecture graph actually are.
+**Live app:** [kizuna-2iar.onrender.com](https://kizuna-2iar.onrender.com) · **A real PR the gate actually caught:** [kizuna-demo #1](https://github.com/swastigupta8/kizuna-demo/pull/1)
 
-## Why
-
-Security tooling shifted left a decade ago — `terraform plan`, SAST scanners, and test coverage gates all catch problems before merge, not after deploy. Reliability never got the same treatment: most resilience testing still happens against systems that are already live. Kizuna asks a narrower question at the right time: **if this PR merges, does the system get measurably more fragile?**
+(Quick naming note: this project was called "Chronos" early on. Kizuna — 絆, Japanese for "bond" or "tie" — felt more honest once the scope settled, since the whole thing is really just about the ties between services and what happens when one breaks.)
 
 ## What it actually does
 
-1. **Parses** your `docker-compose.yml` into a dependency graph — services, what talks to what, and any resilience config (circuit breakers, timeouts, replica counts) declared via labels.
-2. **Scores it four ways**, each independently real, not just LLM vibes:
-   - **Redundancy** — Tarjan's articulation-point algorithm finds genuine single points of failure in the graph structure.
-   - **Blast radius** — an in-memory cascade simulation propagates a failure outward and measures how much of the system goes down with it.
-   - **Recovery** — derived from how long that simulated cascade takes to stabilize against a configurable SLA target.
-   - **Degradation** — a rule-based linter (the same shape as ESLint) checking for missing timeouts, naive retries, and single-replica critical services.
-3. **Explains the findings** using an LLM (Gemini), which only ever touches this human-readable layer — the score itself is deterministic, because a CI gate has to give the same architecture the same result every time.
-4. **Gates a GitHub PR** — a workflow calls the score, posts it as a PR comment, and fails the check below a threshold.
+1. **Parses** your `docker-compose.yml` into a dependency graph — which service talks to which, and any resilience config (circuit breakers, timeouts, replica counts) you've declared via labels.
+2. **Scores it four separate ways**, each one a real calculation, not an LLM guessing:
+   - **Redundancy** — Tarjan's articulation-point algorithm, finding genuine single points of failure in the graph's structure.
+   - **Blast radius** — an in-memory simulation that propagates a failure outward and measures how much of the system goes down with it.
+   - **Recovery** — how long that simulated cascade takes to settle, measured against a configurable SLA target.
+   - **Degradation** — a rule-based linter, the same shape as ESLint, checking for missing timeouts, naive retries, and single-replica critical services.
+3. **Explains the findings in plain English**, using an LLM — but only for this layer. The score itself stays fully deterministic, because a CI gate that gives different answers for the same input isn't a gate anyone can trust.
+4. **Gates a real GitHub PR** — a workflow calls the score, posts it as a comment, and fails the check if the architecture dropped below a threshold.
 
 ## See it in action
 
-| Excellent (86/100) | Healthy (82.5/100) |
-|---|---|
-| ![Excellent architecture](docs/screenshots/dashboard-excellent.png) | ![Healthy architecture](docs/screenshots/dashboard-healthy.png) |
+Same scoring engine, four different architectures, spanning the full range from "genuinely solid" to "one outage away from a bad night."
 
-| Needs attention (71/100) | At risk (49.8/100) |
-|---|---|
-| ![Needs attention](docs/screenshots/dashboard-needs-attention.png) | ![At risk architecture](docs/screenshots/dashboard-at-risk.png) |
+*(add screenshot of the excellent-tier dashboard here — 86/100)*
 
-The same architecture, scored across the full range — from a well-protected system with genuine redundancy down to a linear chain with no safety nets at all. Every score above comes from a real compose file run through the real scoring engine (see [`demo-repo/scenarios/`](demo-repo/scenarios/)), not staged data.
+*(add screenshot of the healthy-tier dashboard here — 82.5/100)*
 
-**The actual CI gate, on a real PR:** [kizuna-demo #1](https://github.com/swastigupta8/kizuna-demo/pull/1) — a PR that adds an unprotected service dependency, watch the gate genuinely fail with an LLM-written fix suggestion, then pass after the fix.
+*(add screenshot of the needs-attention dashboard here — 71/100)*
+
+*(add screenshot of the at-risk dashboard here — 49.8/100)*
+
+Every one of those is a real compose file run through the real engine — see [`demo-repo/scenarios/`](demo-repo/scenarios/) if you want to check my work.
+
+**The part I'd actually point you to first:** [kizuna-demo #1](https://github.com/swastigupta8/kizuna-demo/pull/1) — a real pull request that adds an unprotected service dependency. The gate genuinely fails it, with an LLM-written fix suggestion in the comment, and then genuinely passes once the fix goes in. That loop — break it, catch it, fix it, watch it go green — is the entire pitch in one link.
 
 ## Try it yourself
 
-No signup, no CLI. Go to **[kizuna-2iar.onrender.com](https://kizuna-2iar.onrender.com)**, drop in any `docker-compose.yml`, give it a project name, and you'll land on a dashboard with your score, findings, and suggested fixes within a few seconds.
+No signup, no CLI, no account needed anywhere. Go to **[kizuna-2iar.onrender.com](https://kizuna-2iar.onrender.com)**, drop in a `docker-compose.yml`, give it a project name, and you'll land on a dashboard within a few seconds.
 
-![Upload page](docs/screenshots/upload-page.png)
+*(add screenshot of the upload page here)*
+
+One thing worth knowing before you try your own file: a plain compose file with no labels will score low, and that's not a bug — Kizuna can't see a circuit breaker in your actual code, only in labels you add telling it one exists (`kizuna.circuit_breaker=true`, `kizuna.timeout_ms=2000`, etc.). The upload page has a "What should be in the file?" section with the exact format if you want to see your real setup reflected accurately.
 
 ## Wiring it into your own CI
 
@@ -66,13 +68,13 @@ jobs:
           path: kizuna_comment.md
 ```
 
-Full working example, including the check script: [`demo-repo/.github/`](https://github.com/swastigupta8/kizuna-demo/tree/main/.github).
+That's genuinely close to the whole thing — the full working example, including the check script, is in [`demo-repo/.github/`](https://github.com/swastigupta8/kizuna-demo/tree/main/.github).
 
 ## Stack
 
-Python 3.14 · FastAPI · Pydantic · SQLite · Jinja2 · Gemini API (`google-genai`, forced function-calling) · GitHub Actions · deployed on Render's free tier.
+Python · FastAPI · Pydantic · Turso (libSQL) · Jinja2 · Gemini API (forced function-calling, not free-text parsing) · GitHub Actions · deployed on Render's free tier.
 
-Deliberately not Kubernetes, Kafka, or React — see [architecture notes](#design-notes) below for why.
+No Kubernetes, no Kafka, no React — not because they're bad tools, but because none of them were actually needed here, and reaching for them anyway would have meant a lot of infrastructure theater standing between me and the part of this project that's actually interesting: the scoring engine itself.
 
 ## Running it locally
 
@@ -87,20 +89,21 @@ cp .env.example .env   # add your own GEMINI_API_KEY
 .venv\Scripts\python -m uvicorn main:app --reload
 ```
 
-Then visit `http://127.0.0.1:8000`. Run the test suite with `.venv\Scripts\python -m pytest` — 47 tests, all mocking the LLM boundary so none require a real API key.
+Then visit `http://127.0.0.1:8000`. Run the tests with `.venv\Scripts\python -m pytest` — 47 of them, all mocking the LLM boundary, so none need a real API key to pass.
 
-## Design notes
+## A few design decisions worth knowing about
 
-- **The score is deterministic; the LLM is isolated.** `score.py` never imports `remediate.py`. Every failure mode in the LLM call (missing key, network error, bad response) returns an empty mapping rather than raising — a missing explanation should never be able to break the gate.
-- **Blast radius mathematically can't reach 100** for any graph with a critical node, since the failing node always counts as affecting itself. Worth knowing going in, not discovering by surprise.
-- **Redundancy and blast radius catch different things.** A shared database that three services all depend on independently can be structurally redundant (multiple paths through the graph) while still being an operational risk if it fails — that's exactly what the "excellent" scenario above shows: 100/100 redundancy, and still one real blast-radius finding.
+- **The score is deterministic; the LLM is isolated on purpose.** `score.py` never imports `remediate.py`, and every failure mode in the LLM call — missing key, network error, a bad response — returns an empty mapping instead of raising. A missing explanation should never be able to take the gate down with it.
+- **Blast radius mathematically can't reach a perfect 100** for any graph with a critical node in it, since a failing node always counts as affecting at least itself. Worth knowing that going in rather than being confused by it later.
+- **Redundancy and blast radius catch genuinely different failure modes.** A database that three services all depend on independently can be structurally redundant — multiple paths through the graph — while still being a real operational risk if it goes down. The "excellent" scenario above shows exactly this: 100/100 redundancy, and still one honest blast-radius finding.
 
 ## Known limitations
 
-- No auth or multi-tenancy — this is a single shared instance, fine for a demo, not for production multi-team use.
-- Render's free tier has ephemeral disk, so score history can reset on redeploy. *(Being migrated to persistent storage — see open issues.)*
-- The resilience-factor constants (circuit breaker absorbs 60% of propagated severity, retry absorbs 20%) are chosen for a plausible demo, not empirically calibrated.
+Being upfront about what's not solved here yet:
+
+- No auth or multi-tenancy — this is a single shared instance, which is fine for a demo and not something I'd ship for real multi-team use as-is.
 - No rate limiting on the scoring endpoint yet.
+- The resilience-factor constants (a circuit breaker absorbs 60% of propagated severity, a bare retry absorbs 20%) were chosen because they're plausible, not because they're empirically calibrated against real systems.
 
 ## License
 
