@@ -56,6 +56,20 @@ def test_score_endpoint_persists_and_history_reads_it_back(tmp_path, monkeypatch
     assert history[0]["repo"] == "demo/repo"
 
 
+def test_score_endpoint_persists_the_parsed_graph_too(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'api-test.db'}")
+
+    client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": COMPOSE})
+    history = db.get_score_history("demo/repo", db_url=f"file:{tmp_path / 'api-test.db'}")
+
+    import json
+
+    graph = json.loads(history[0]["graph_json"])
+    node_ids = {n["id"] for n in graph["nodes"]}
+    assert node_ids == {"api", "db"}
+    assert graph["edges"] == [{"source": "api", "target": "db"}]
+
+
 def test_invalid_yaml_returns_400(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'api-test.db'}")
 

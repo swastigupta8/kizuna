@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,560;9..144,650&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/vis-network@9/standalone/umd/vis-network.min.js"></script>
 <style>
   :root {
     --bg: #fdf1f6;
@@ -134,6 +135,19 @@
   .card h2 { font-family: "Fraunces", serif; font-size: 1.1rem; font-weight: 560; margin: 0 0 18px; }
   .card h2 .count { color: var(--muted); font-family: "Manrope", sans-serif; font-weight: 600; font-size: 0.85rem; }
 
+  /* ---------- Architecture map ---------- */
+  #architectureMap {
+    height: 420px; border-radius: 14px; overflow: hidden;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .map-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; font-size: 0.82rem; color: var(--ink-soft); }
+  .map-legend .item { display: inline-flex; align-items: center; gap: 6px; }
+  .map-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .map-legend .dot.high { background: var(--crit); }
+  .map-legend .dot.medium { background: var(--warn); }
+  .map-legend .dot.low { background: var(--good); }
+  .map-legend .ring { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent); flex-shrink: 0; }
+
   /* ---------- Findings ---------- */
   .finding {
     display: flex; gap: 16px; padding: 16px 0; border-top: 1px solid var(--border);
@@ -237,6 +251,19 @@
     </div>
   </div>
 
+  {% if graph %}
+  <div class="card">
+    <h2>Architecture map</h2>
+    <div id="architectureMap"></div>
+    <div class="map-legend">
+      <span class="item"><span class="dot high"></span> High-severity finding</span>
+      <span class="item"><span class="dot medium"></span> Medium-severity finding</span>
+      <span class="item"><span class="dot low"></span> No findings</span>
+      <span class="item"><span class="ring"></span> Marked critical</span>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="card">
     <h2>Score history</h2>
     <canvas id="historyChart" height="70"></canvas>
@@ -281,6 +308,53 @@
 
   <footer>Kizuna — shift-left resilience scoring</footer>
 </div>
+
+{% if graph %}
+<script>
+  (function () {
+    const s = getComputedStyle(document.documentElement);
+    const accent = s.getPropertyValue('--accent').trim();
+    const surface2 = s.getPropertyValue('--surface-2').trim();
+    const border = s.getPropertyValue('--border').trim();
+    const ink = s.getPropertyValue('--ink').trim();
+    const severityColor = {
+      high: s.getPropertyValue('--crit').trim(),
+      medium: s.getPropertyValue('--warn').trim(),
+      low: s.getPropertyValue('--good').trim(),
+    };
+    const nodeSeverity = {{ node_severity|tojson }};
+
+    const nodes = {{ graph.nodes|tojson }}.map((n) => {
+      const sev = nodeSeverity[n.id];
+      const fill = sev ? severityColor[sev] : surface2;
+      return {
+        id: n.id,
+        label: n.id,
+        shape: 'dot',
+        size: n.config.critical ? 24 : 16,
+        color: { background: fill, border: n.config.critical ? accent : border, highlight: { background: fill, border: accent } },
+        borderWidth: n.config.critical ? 3 : 1.5,
+        font: { color: ink, face: 'Manrope', size: 13 },
+      };
+    });
+
+    const edges = {{ graph.edges|tojson }}.map((e) => ({
+      from: e.source, to: e.target, arrows: 'to',
+      color: { color: border, highlight: accent }, width: 1.5,
+    }));
+
+    new vis.Network(
+      document.getElementById('architectureMap'),
+      { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) },
+      {
+        physics: { stabilization: true, barnesHut: { gravitationalConstant: -4000, springLength: 120 } },
+        interaction: { hover: true, zoomView: true, dragView: true },
+        edges: { smooth: { type: 'continuous' } },
+      }
+    );
+  })();
+</script>
+{% endif %}
 
 {% if latest %}
 <script>

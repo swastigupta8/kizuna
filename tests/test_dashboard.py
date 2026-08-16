@@ -39,6 +39,30 @@ def test_dashboard_renders_the_latest_score_and_findings(tmp_path, monkeypatch):
     assert "demo/repo" in resp.text
     assert "Resilience Score" in resp.text
     assert "ring-number" in resp.text
+    assert "IST" in resp.text
+
+
+def test_dashboard_renders_the_architecture_map_when_graph_is_present(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'dash-test.db'}")
+
+    client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": COMPOSE})
+    resp = client.get("/dashboard/demo/repo")
+
+    assert resp.status_code == 200
+    assert "architectureMap" in resp.text
+    assert "vis-network" in resp.text
+
+
+def test_dashboard_hides_the_map_when_no_graph_was_ever_stored(tmp_path, monkeypatch):
+    db_url = f"file:{tmp_path / 'dash-test.db'}"
+    monkeypatch.setattr(db, "DB_URL", db_url)
+
+    # simulate an old row saved before graph_json existed
+    db.save_score_run("legacy/repo", 80.0, 80.0, 80.0, 80.0, 80.0, [], db_url=db_url)
+    resp = client.get("/dashboard/legacy/repo")
+
+    assert resp.status_code == 200
+    assert "id=\"architectureMap\"" not in resp.text
 
 
 def test_dashboard_score_history_feeds_the_chart_data(tmp_path, monkeypatch):

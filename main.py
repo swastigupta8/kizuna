@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 
 import yaml
 from dotenv import load_dotenv
@@ -18,6 +19,9 @@ load_dotenv()
 app = FastAPI(title="Kizuna")
 templates = Jinja2Templates(directory="templates")
 
+IST = timezone(timedelta(hours=5, minutes=30))
+_SEVERITY_RANK = {"low": 1, "medium": 2, "high": 3}
+
 
 class ScoreRequest(BaseModel):
     repo: str
@@ -36,6 +40,20 @@ class ScoreResponse(BaseModel):
     redundancy_score: float
     degradation_score: float
     findings: list[FindingWithRemediation]
+
+
+def _to_ist(iso_timestamp: str, *, short: bool = False) -> str:
+    dt = datetime.fromisoformat(iso_timestamp).astimezone(IST)
+    return dt.strftime("%d %b, %I:%M %p") if short else dt.strftime("%d %b %Y, %I:%M %p IST")
+
+
+def _worst_severity_per_node(findings: list[dict]) -> dict[str, str]:
+    worst: dict[str, str] = {}
+    for finding in findings:
+        node_id, severity = finding["node_id"], finding["severity"]
+        if node_id not in worst or _SEVERITY_RANK[severity] > _SEVERITY_RANK[worst[node_id]]:
+            worst[node_id] = severity
+    return worst
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -74,6 +92,7 @@ def score_architecture(request: ScoreRequest) -> ScoreResponse:
         result.redundancy,
         result.degradation,
         [finding.model_dump() for finding in findings_out],
+        graph.model_dump(),
     )
 
     return ScoreResponse(
@@ -109,6 +128,10 @@ def dashboard(request: Request, repo: str):
 
     latest = dict(history[0])
     latest["findings"] = json.loads(latest["findings_json"])
+    latest["created_at"] = _to_ist(latest["created_at"])
+
+    graph = json.loads(latest["graph_json"]) if latest.get("graph_json") else None
+    node_severity = _worst_severity_per_node(latest["findings"]) if graph else {}
 
     chronological = list(reversed(history))  # oldest -> newest, for the chart
 
@@ -118,7 +141,9 @@ def dashboard(request: Request, repo: str):
         context={
             "repo": repo,
             "latest": latest,
-            "history_labels": [row["created_at"] for row in chronological],
+            "graph": graph,
+            "node_severity": node_severity,
+            "history_labels": [_to_ist(row["created_at"], short=True) for row in chronological],
             "history_scores": [row["overall_score"] for row in chronological],
         },
     )

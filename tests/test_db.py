@@ -42,6 +42,26 @@ def test_history_is_scoped_to_the_requested_repo(tmp_path):
     assert len(db.get_score_history("repo-c", db_url=db_url)) == 0
 
 
+def test_graph_round_trips_when_provided(tmp_path):
+    db_url = _file_url(tmp_path, "test.db")
+    graph = {"nodes": [{"id": "api"}, {"id": "db"}], "edges": [{"source": "api", "target": "db"}]}
+
+    db.save_score_run("repo-a", 80.0, 80.0, 80.0, 80.0, 80.0, [], graph=graph, db_url=db_url)
+    history = db.get_score_history("repo-a", db_url=db_url)
+
+    import json
+
+    assert json.loads(history[0]["graph_json"]) == graph
+
+
+def test_graph_is_null_when_not_provided(tmp_path):
+    db_url = _file_url(tmp_path, "test.db")
+    db.save_score_run("repo-a", 80.0, 80.0, 80.0, 80.0, 80.0, [], db_url=db_url)
+
+    history = db.get_score_history("repo-a", db_url=db_url)
+    assert history[0]["graph_json"] is None
+
+
 def test_history_is_ordered_most_recent_first(tmp_path):
     db_url = _file_url(tmp_path, "test.db")
 

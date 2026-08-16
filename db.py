@@ -46,7 +46,21 @@ def _connect(db_url: str | None = None, auth_token: str | None = None):
     else:
         conn = sqlite3.connect(url.removeprefix("file:"))
     conn.execute(_SCHEMA)
+    _ensure_graph_column(conn)
     return conn
+
+
+def _ensure_graph_column(conn) -> None:
+    """
+    `graph_json` was added after the table already existed in production, so
+    CREATE TABLE IF NOT EXISTS alone won't add it to an existing database —
+    needs an actual ALTER TABLE. Failing means the column's already there,
+    which is the expected, common case after the first run.
+    """
+    try:
+        conn.execute("ALTER TABLE score_runs ADD COLUMN graph_json TEXT")
+    except Exception:
+        pass
 
 
 def _fetch_as_dicts(cursor) -> list[dict]:
@@ -62,13 +76,16 @@ def save_score_run(
     redundancy_score: float,
     degradation_score: float,
     findings: list[dict],
+    graph: dict | None = None,
     db_url: str | None = None,
     auth_token: str | None = None,
 ) -> int | None:
     """
-    `findings` is plain dicts, already including any remediation text — this
-    module deliberately knows nothing about ScoreResult or the LLM layer, it
-    just persists whatever finished JSON it's handed.
+    `findings` is plain dicts, already including any remediation text, and
+    `graph` is the parsed ArchitectureGraph as a plain dict (nodes + edges) —
+    this module deliberately knows nothing about ScoreResult, Finding, or
+    ArchitectureGraph as types, it just persists whatever finished JSON it's
+    handed.
     """
     conn = _connect(db_url, auth_token)
     try:
@@ -76,8 +93,8 @@ def save_score_run(
             """
             INSERT INTO score_runs
                 (repo, overall_score, blast_radius_score, recovery_score,
-                 redundancy_score, degradation_score, findings_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 redundancy_score, degradation_score, findings_json, graph_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 repo,
@@ -87,6 +104,7 @@ def save_score_run(
                 redundancy_score,
                 degradation_score,
                 json.dumps(findings),
+                json.dumps(graph) if graph is not None else None,
                 datetime.now(UTC).isoformat(),
             ),
         )
