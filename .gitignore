@@ -5,3 +5,7 @@ __pycache__/
 .env
 *.db
 kizuna_comment.md
+
+# its own separate git repo (github.com/swastigupta8/kizuna-demo) — was
+# accidentally tracked here before it got its own .git; untangled 2026-08-16
+demo-repo/
