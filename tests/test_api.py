@@ -32,7 +32,7 @@ def test_health_endpoint():
 
 
 def test_score_endpoint_computes_and_returns_all_subscores(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "api-test.db")
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'api-test.db'}")
 
     resp = client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": COMPOSE})
 
@@ -45,7 +45,7 @@ def test_score_endpoint_computes_and_returns_all_subscores(tmp_path, monkeypatch
 
 
 def test_score_endpoint_persists_and_history_reads_it_back(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "api-test.db")
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'api-test.db'}")
 
     client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": COMPOSE})
     resp = client.get("/api/v1/score/history/demo/repo")
@@ -57,14 +57,14 @@ def test_score_endpoint_persists_and_history_reads_it_back(tmp_path, monkeypatch
 
 
 def test_invalid_yaml_returns_400(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "api-test.db")
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'api-test.db'}")
 
     resp = client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": "not: valid: yaml: at: all:"})
     assert resp.status_code == 400
 
 
 def test_compose_with_no_services_returns_400(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "api-test.db")
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'api-test.db'}")
 
     resp = client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": "services: {}"})
     assert resp.status_code == 400

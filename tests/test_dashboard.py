@@ -19,7 +19,7 @@ services:
 
 
 def test_dashboard_renders_a_friendly_empty_state_instead_of_a_bare_404(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "dash-test.db")
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'dash-test.db'}")
     resp = client.get("/dashboard/nobody/nothing")
 
     assert resp.status_code == 200
@@ -29,7 +29,7 @@ def test_dashboard_renders_a_friendly_empty_state_instead_of_a_bare_404(tmp_path
 
 
 def test_dashboard_renders_the_latest_score_and_findings(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "dash-test.db")
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'dash-test.db'}")
 
     client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": COMPOSE})
     resp = client.get("/dashboard/demo/repo")
@@ -42,7 +42,7 @@ def test_dashboard_renders_the_latest_score_and_findings(tmp_path, monkeypatch):
 
 
 def test_dashboard_score_history_feeds_the_chart_data(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "dash-test.db")
+    monkeypatch.setattr(db, "DB_URL", f"file:{tmp_path / 'dash-test.db'}")
 
     client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": COMPOSE})
     client.post("/api/v1/score", json={"repo": "demo/repo", "compose_yaml": COMPOSE})

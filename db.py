@@ -1,9 +1,15 @@
 import json
-import sqlite3
+import os
 from datetime import UTC, datetime
-from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "kizuna.db"
+import libsql_client
+
+# Defaults to a local file — no credentials needed for local dev or tests.
+# Production sets DB_URL to a libsql://... Turso URL and DB_AUTH_TOKEN to a
+# real token, which gives the exact same API but with storage that survives
+# a redeploy instead of living on Render's ephemeral container disk.
+DB_URL = os.environ.get("DB_URL", "file:kizuna.db")
+DB_AUTH_TOKEN = os.environ.get("DB_AUTH_TOKEN")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS score_runs (
@@ -20,11 +26,11 @@ CREATE TABLE IF NOT EXISTS score_runs (
 """
 
 
-def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path or DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute(_SCHEMA)
-    return conn
+def _client(db_url: str | None = None, auth_token: str | None = None) -> libsql_client.Client:
+    url = db_url or DB_URL
+    token = auth_token if auth_token is not None else DB_AUTH_TOKEN
+    kwargs = {"auth_token": token} if token else {}
+    return libsql_client.create_client_sync(url, **kwargs)
 
 
 def save_score_run(
@@ -35,23 +41,24 @@ def save_score_run(
     redundancy_score: float,
     degradation_score: float,
     findings: list[dict],
-    db_path: Path | None = None,
-) -> int:
+    db_url: str | None = None,
+    auth_token: str | None = None,
+) -> int | None:
     """
     `findings` is plain dicts, already including any remediation text — this
     module deliberately knows nothing about ScoreResult or the LLM layer, it
     just persists whatever finished JSON it's handed.
     """
-    conn = get_connection(db_path)
-    with conn:
-        cursor = conn.execute(
+    with _client(db_url, auth_token) as client:
+        client.execute(_SCHEMA)
+        result = client.execute(
             """
             INSERT INTO score_runs
                 (repo, overall_score, blast_radius_score, recovery_score,
                  redundancy_score, degradation_score, findings_json, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (
+            [
                 repo,
                 overall_score,
                 blast_radius_score,
@@ -60,18 +67,18 @@ def save_score_run(
                 degradation_score,
                 json.dumps(findings),
                 datetime.now(UTC).isoformat(),
-            ),
+            ],
         )
-    row_id = cursor.lastrowid
-    conn.close()
-    return row_id
+        return result.last_insert_rowid
 
 
-def get_score_history(repo: str, limit: int = 20, db_path: Path | None = None) -> list[dict]:
-    conn = get_connection(db_path)
-    rows = conn.execute(
-        "SELECT * FROM score_runs WHERE repo = ? ORDER BY created_at DESC LIMIT ?",
-        (repo, limit),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+def get_score_history(
+    repo: str, limit: int = 20, db_url: str | None = None, auth_token: str | None = None
+) -> list[dict]:
+    with _client(db_url, auth_token) as client:
+        client.execute(_SCHEMA)
+        result = client.execute(
+            "SELECT * FROM score_runs WHERE repo = ? ORDER BY created_at DESC LIMIT ?",
+            [repo, limit],
+        )
+        return [row.asdict() for row in result.rows]
