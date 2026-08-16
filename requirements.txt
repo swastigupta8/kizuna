@@ -6,4 +6,4 @@ httpx
 google-genai
 python-dotenv
 jinja2
-libsql-client
+turso_serverless

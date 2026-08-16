@@ -1,13 +1,14 @@
 import json
 import os
+import sqlite3
 from datetime import UTC, datetime
 
-import libsql_client
+import turso_serverless
 
 # Defaults to a local file — no credentials needed for local dev or tests.
 # Production sets DB_URL to a libsql://... Turso URL and DB_AUTH_TOKEN to a
-# real token, which gives the exact same API but with storage that survives
-# a redeploy instead of living on Render's ephemeral container disk.
+# real token, which gives the exact same effective API but with storage that
+# survives a redeploy instead of living on Render's ephemeral container disk.
 DB_URL = os.environ.get("DB_URL", "file:kizuna.db")
 DB_AUTH_TOKEN = os.environ.get("DB_AUTH_TOKEN")
 
@@ -26,11 +27,31 @@ CREATE TABLE IF NOT EXISTS score_runs (
 """
 
 
-def _client(db_url: str | None = None, auth_token: str | None = None) -> libsql_client.Client:
+def _is_remote(url: str) -> bool:
+    return url.startswith("libsql://") or url.startswith("https://")
+
+
+def _connect(db_url: str | None = None, auth_token: str | None = None):
+    """
+    Remote (libsql://...) goes through turso_serverless — Turso's HTTP-based
+    driver. Anything else is treated as a local sqlite3 file, so local dev
+    and tests never need a Turso account. Both are DB-API-2.0-shaped enough
+    that everything downstream (execute/fetchall/description/lastrowid)
+    works the same either way.
+    """
     url = db_url or DB_URL
-    token = auth_token if auth_token is not None else DB_AUTH_TOKEN
-    kwargs = {"auth_token": token} if token else {}
-    return libsql_client.create_client_sync(url, **kwargs)
+    if _is_remote(url):
+        token = auth_token if auth_token is not None else DB_AUTH_TOKEN
+        conn = turso_serverless.connect(url, auth_token=token)
+    else:
+        conn = sqlite3.connect(url.removeprefix("file:"))
+    conn.execute(_SCHEMA)
+    return conn
+
+
+def _fetch_as_dicts(cursor) -> list[dict]:
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
 def save_score_run(
@@ -49,16 +70,16 @@ def save_score_run(
     module deliberately knows nothing about ScoreResult or the LLM layer, it
     just persists whatever finished JSON it's handed.
     """
-    with _client(db_url, auth_token) as client:
-        client.execute(_SCHEMA)
-        result = client.execute(
+    conn = _connect(db_url, auth_token)
+    try:
+        cursor = conn.execute(
             """
             INSERT INTO score_runs
                 (repo, overall_score, blast_radius_score, recovery_score,
                  redundancy_score, degradation_score, findings_json, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            [
+            (
                 repo,
                 overall_score,
                 blast_radius_score,
@@ -67,18 +88,23 @@ def save_score_run(
                 degradation_score,
                 json.dumps(findings),
                 datetime.now(UTC).isoformat(),
-            ],
+            ),
         )
-        return result.last_insert_rowid
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
 
 
 def get_score_history(
     repo: str, limit: int = 20, db_url: str | None = None, auth_token: str | None = None
 ) -> list[dict]:
-    with _client(db_url, auth_token) as client:
-        client.execute(_SCHEMA)
-        result = client.execute(
+    conn = _connect(db_url, auth_token)
+    try:
+        cursor = conn.execute(
             "SELECT * FROM score_runs WHERE repo = ? ORDER BY created_at DESC LIMIT ?",
-            [repo, limit],
+            (repo, limit),
         )
-        return [row.asdict() for row in result.rows]
+        return _fetch_as_dicts(cursor)
+    finally:
+        conn.close()
