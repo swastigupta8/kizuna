@@ -9,18 +9,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,560;9..144,650&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f6f4ef; --surface: #ffffff; --surface-2: #efece4;
-    --ink: #1c1a17; --ink-soft: #57544d; --muted: #8d897e; --border: #e2ded3;
-    --accent: #a8703a; --accent-soft: #f4e8d8; --accent-strong: #8a5a2c;
-    --crit: #a8455e; --crit-soft: #f5e3e8;
-    --shadow: 0 1px 2px rgba(28,26,23,0.05), 0 12px 32px rgba(28,26,23,0.06);
+    --bg: #fdf1f6; --surface: #ffffff; --surface-2: #fbe5ee;
+    --ink: #3d2530; --ink-soft: #6b4a58; --muted: #a1808c; --border: #f3d7e2;
+    --accent: #de6f9b; --accent-soft: #fbe1ec; --accent-strong: #b84a76;
+    --good: #6fae8a; --good-soft: #e5f3ec;
+    --warn: #e39a6e; --warn-soft: #fbebe0;
+    --crit: #d97a86; --crit-soft: #fae3e6;
+    --shadow: 0 1px 2px rgba(180,60,110,0.06), 0 12px 32px rgba(180,60,110,0.08);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #131419; --surface: #1a1c23; --surface-2: #20222a;
-      --ink: #f1efe8; --ink-soft: #c2bfb6; --muted: #86899a; --border: #2a2c36;
-      --accent: #d9a866; --accent-soft: #2c2417; --accent-strong: #ecc084;
-      --crit: #dd8aa0; --crit-soft: #33212a;
+      --bg: #201621; --surface: #2b1d2d; --surface-2: #362436;
+      --ink: #f8e9f0; --ink-soft: #dcc2cf; --muted: #a988a0; --border: #4a3348;
+      --accent: #f4a3c7; --accent-soft: #3d2536; --accent-strong: #f8c0dc;
+      --good: #93d0ac; --good-soft: #22352a;
+      --warn: #f0b48a; --warn-soft: #3a291b;
+      --crit: #efa8ac; --crit-soft: #3d2427;
       --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.4);
     }
   }
@@ -29,11 +33,21 @@
 
   body {
     margin: 0;
-    background: radial-gradient(1200px 600px at 12% -10%, color-mix(in srgb, var(--accent) 9%, transparent), transparent), var(--bg);
+    background: var(--bg);
     color: var(--ink); font-family: "Manrope", -apple-system, sans-serif;
     padding: 64px 24px 96px; -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
-  .wrap { max-width: 640px; margin: 0 auto; animation: rise 0.5s ease-out; }
+
+  .orbit-field { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  .orbit { position: absolute; border-radius: 50%; }
+  .orbit.ring { border: 2px solid var(--accent); opacity: 0.28; }
+  .orbit.blob { background: radial-gradient(circle, var(--accent) 0%, transparent 72%); opacity: 0.22; filter: blur(1px); }
+  @keyframes orbit-a { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(26px, -34px) scale(1.06); } 66% { transform: translate(-20px, 22px) scale(0.94); } }
+  @keyframes orbit-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-32px, -26px) scale(1.08); } }
+  @keyframes orbit-c { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(22px, 18px); } 50% { transform: translate(-18px, 28px); } 75% { transform: translate(-26px, -16px); } }
+
+  .wrap { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; animation: rise 0.5s ease-out; }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
   .brand { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
@@ -41,20 +55,20 @@
   .brand .tag { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
   .lede { color: var(--ink-soft); font-size: 1.02rem; line-height: 1.6; margin: 14px 0 40px; max-width: 52ch; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 30px 32px; margin-bottom: 20px; box-shadow: var(--shadow); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 30px 32px; margin-bottom: 20px; box-shadow: var(--shadow); }
   .card h2 { font-family: "Fraunces", serif; font-size: 1.15rem; font-weight: 560; margin: 0 0 6px; }
   .card .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 20px; }
 
   label { display: block; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
   input[type="text"] {
     width: 100%; font-family: "JetBrains Mono", monospace; font-size: 0.92rem;
-    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
     padding: 12px 14px; color: var(--ink); margin-bottom: 18px; transition: border-color 0.15s ease;
   }
   input[type="text"]:focus { outline: none; border-color: var(--accent); }
 
   .file-drop {
-    border: 1.5px dashed var(--border); border-radius: 12px; padding: 22px 18px;
+    border: 1.5px dashed var(--border); border-radius: 16px; padding: 22px 18px;
     text-align: center; margin-bottom: 18px; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease;
     position: relative;
   }
@@ -64,27 +78,50 @@
   .file-drop .fhint { color: var(--muted); font-size: 0.84rem; margin-top: 4px; }
 
   button {
-    width: 100%; background: var(--accent); color: var(--surface); border: none; border-radius: 10px;
+    width: 100%; background: var(--accent); color: var(--surface); border: none; border-radius: 999px;
     padding: 13px 18px; font-family: "Manrope", sans-serif; font-size: 0.94rem; font-weight: 700;
     cursor: pointer; transition: opacity 0.15s ease, transform 0.1s ease;
   }
-  button:hover:not(:disabled) { opacity: 0.92; }
-  button:active:not(:disabled) { transform: scale(0.99); }
+  button:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+  button:active:not(:disabled) { transform: scale(0.98); }
   button:disabled { opacity: 0.6; cursor: default; }
   button.secondary { background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); }
 
-  .error { color: var(--crit); background: var(--crit-soft); border-radius: 8px; padding: 10px 14px; font-size: 0.86rem; margin-top: 14px; display: none; }
+  .error { color: var(--crit); background: var(--crit-soft); border-radius: 10px; padding: 10px 14px; font-size: 0.86rem; margin-top: 14px; display: none; }
   .error.show { display: block; }
 
   .lookup-row { display: flex; gap: 10px; }
   .lookup-row input { margin-bottom: 0; flex: 1; }
   .lookup-row button { width: auto; padding: 12px 20px; }
 
+  details.format-hint { margin-top: 16px; }
+  details.format-hint summary {
+    cursor: pointer; font-size: 0.86rem; color: var(--accent-strong); font-weight: 600;
+    list-style: none; display: flex; align-items: center; gap: 6px;
+  }
+  details.format-hint summary::-webkit-details-marker { display: none; }
+  details.format-hint summary::before { content: "✦"; font-size: 0.8em; }
+  details.format-hint .hint-body { margin-top: 12px; color: var(--ink-soft); font-size: 0.88rem; line-height: 1.6; }
+  details.format-hint pre {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin-top: 10px; overflow-x: auto; font-size: 0.8rem; line-height: 1.6;
+  }
+  details.format-hint code { font-family: "JetBrains Mono", monospace; }
+
   footer { color: var(--muted); font-size: 0.8rem; text-align: center; margin-top: 40px; }
   footer a { color: var(--accent-strong); }
 </style>
 </head>
 <body>
+<div class="orbit-field" aria-hidden="true">
+  <span class="orbit ring" style="width:180px;height:180px;top:6%;left:4%;animation:orbit-a 22s ease-in-out infinite;"></span>
+  <span class="orbit blob" style="width:140px;height:140px;top:62%;left:88%;animation:orbit-b 26s ease-in-out infinite;"></span>
+  <span class="orbit ring" style="width:90px;height:90px;top:82%;left:10%;animation:orbit-c 18s ease-in-out infinite;"></span>
+  <span class="orbit blob" style="width:240px;height:240px;top:12%;left:86%;animation:orbit-a 30s ease-in-out infinite reverse;"></span>
+  <span class="orbit ring" style="width:60px;height:60px;top:42%;left:2%;animation:orbit-b 20s ease-in-out infinite;"></span>
+  <span class="orbit blob" style="width:100px;height:100px;top:4%;left:45%;animation:orbit-c 24s ease-in-out infinite;"></span>
+</div>
+
 <div class="wrap">
   <div class="brand"><span class="mark">Kizuna</span><span class="tag">Resilience Report</span></div>
   <p class="lede">
@@ -110,6 +147,33 @@
 
       <button type="submit" id="upload-button">Score my architecture</button>
       <div class="error" id="upload-error"></div>
+
+      <details class="format-hint">
+        <summary>What should be in the file?</summary>
+        <div class="hint-body">
+          Any normal <code>docker-compose.yml</code> works — Kizuna reads your
+          <code>services</code> and <code>depends_on</code> to build the
+          architecture graph. But plain compose files don't say anything about
+          circuit breakers or timeouts, so without a little more detail every
+          service defaults to "no protection detected." Add a few
+          <code>kizuna.*</code> labels to any service to tell it what's
+          actually there:
+          <pre><code>services:
+  payment-service:
+    image: myorg/payment-service
+    depends_on:
+      - database
+    deploy:
+      replicas: 3
+    labels:
+      - "kizuna.critical=true"
+      - "kizuna.circuit_breaker=true"
+      - "kizuna.timeout_ms=2000"</code></pre>
+          No labels at all still works — you'll just see a lower score made up
+          mostly of "nothing's configured yet" findings, which is honest, just
+          maybe not what you meant to show off.
+        </div>
+      </details>
     </form>
   </div>
 

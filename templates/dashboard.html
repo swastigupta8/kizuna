@@ -10,48 +10,48 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   :root {
-    --bg: #f6f4ef;
+    --bg: #fdf1f6;
     --surface: #ffffff;
-    --surface-2: #efece4;
-    --ink: #1c1a17;
-    --ink-soft: #57544d;
-    --muted: #8d897e;
-    --border: #e2ded3;
-    --accent: #a8703a;
-    --accent-soft: #f4e8d8;
-    --accent-strong: #8a5a2c;
-    --good: #4c8a5a; --good-soft: #e6f0e6;
-    --warn: #b8842e; --warn-soft: #f7edd9;
-    --crit: #a8455e; --crit-soft: #f5e3e8;
-    --shadow: 0 1px 2px rgba(28,26,23,0.05), 0 12px 32px rgba(28,26,23,0.06);
-    --shadow-lift: 0 4px 8px rgba(28,26,23,0.06), 0 20px 40px rgba(28,26,23,0.10);
+    --surface-2: #fbe5ee;
+    --ink: #3d2530;
+    --ink-soft: #6b4a58;
+    --muted: #a1808c;
+    --border: #f3d7e2;
+    --accent: #de6f9b;
+    --accent-soft: #fbe1ec;
+    --accent-strong: #b84a76;
+    --good: #6fae8a; --good-soft: #e5f3ec;
+    --warn: #e39a6e; --warn-soft: #fbebe0;
+    --crit: #d97a86; --crit-soft: #fae3e6;
+    --shadow: 0 1px 2px rgba(180,60,110,0.06), 0 12px 32px rgba(180,60,110,0.08);
+    --shadow-lift: 0 4px 8px rgba(180,60,110,0.08), 0 20px 40px rgba(180,60,110,0.12);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #131419;
-      --surface: #1a1c23;
-      --surface-2: #20222a;
-      --ink: #f1efe8;
-      --ink-soft: #c2bfb6;
-      --muted: #86899a;
-      --border: #2a2c36;
-      --accent: #d9a866;
-      --accent-soft: #2c2417;
-      --accent-strong: #ecc084;
-      --good: #7cbb8a; --good-soft: #1b2a1f;
-      --warn: #dcae5f; --warn-soft: #2e2617;
-      --crit: #dd8aa0; --crit-soft: #33212a;
+      --bg: #201621;
+      --surface: #2b1d2d;
+      --surface-2: #362436;
+      --ink: #f8e9f0;
+      --ink-soft: #dcc2cf;
+      --muted: #a988a0;
+      --border: #4a3348;
+      --accent: #f4a3c7;
+      --accent-soft: #3d2536;
+      --accent-strong: #f8c0dc;
+      --good: #93d0ac; --good-soft: #22352a;
+      --warn: #f0b48a; --warn-soft: #3a291b;
+      --crit: #efa8ac; --crit-soft: #3d2427;
       --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.4);
       --shadow-lift: 0 4px 10px rgba(0,0,0,0.4), 0 24px 48px rgba(0,0,0,0.5);
     }
   }
   :root[data-theme="dark"] {
-    --bg: #131419; --surface: #1a1c23; --surface-2: #20222a;
-    --ink: #f1efe8; --ink-soft: #c2bfb6; --muted: #86899a; --border: #2a2c36;
-    --accent: #d9a866; --accent-soft: #2c2417; --accent-strong: #ecc084;
-    --good: #7cbb8a; --good-soft: #1b2a1f;
-    --warn: #dcae5f; --warn-soft: #2e2617;
-    --crit: #dd8aa0; --crit-soft: #33212a;
+    --bg: #201621; --surface: #2b1d2d; --surface-2: #362436;
+    --ink: #f8e9f0; --ink-soft: #dcc2cf; --muted: #a988a0; --border: #4a3348;
+    --accent: #f4a3c7; --accent-soft: #3d2536; --accent-strong: #f8c0dc;
+    --good: #93d0ac; --good-soft: #22352a;
+    --warn: #f0b48a; --warn-soft: #3a291b;
+    --crit: #efa8ac; --crit-soft: #3d2427;
     --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.4);
     --shadow-lift: 0 4px 10px rgba(0,0,0,0.4), 0 24px 48px rgba(0,0,0,0.5);
   }
@@ -61,16 +61,23 @@
 
   body {
     margin: 0;
-    background:
-      radial-gradient(1200px 600px at 12% -10%, color-mix(in srgb, var(--accent) 9%, transparent), transparent),
-      var(--bg);
+    background: var(--bg);
     color: var(--ink);
     font-family: "Manrope", -apple-system, "Segoe UI", sans-serif;
     padding: 56px 24px 96px;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
 
-  .wrap { max-width: 940px; margin: 0 auto; animation: rise 0.5s ease-out; }
+  .orbit-field { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  .orbit { position: absolute; border-radius: 50%; }
+  .orbit.ring { border: 2px solid var(--accent); opacity: 0.22; }
+  .orbit.blob { background: radial-gradient(circle, var(--accent) 0%, transparent 72%); opacity: 0.16; filter: blur(1px); }
+  @keyframes orbit-a { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(26px, -34px) scale(1.06); } 66% { transform: translate(-20px, 22px) scale(0.94); } }
+  @keyframes orbit-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-32px, -26px) scale(1.08); } }
+  @keyframes orbit-c { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(22px, 18px); } 50% { transform: translate(-18px, 28px); } 75% { transform: translate(-26px, -16px); } }
+
+  .wrap { position: relative; z-index: 1; max-width: 940px; margin: 0 auto; animation: rise 0.5s ease-out; }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
   .brand { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
@@ -170,6 +177,13 @@
 </style>
 </head>
 <body>
+<div class="orbit-field" aria-hidden="true">
+  <span class="orbit ring" style="width:200px;height:200px;top:5%;left:3%;animation:orbit-a 24s ease-in-out infinite;"></span>
+  <span class="orbit blob" style="width:160px;height:160px;top:70%;left:90%;animation:orbit-b 28s ease-in-out infinite;"></span>
+  <span class="orbit ring" style="width:100px;height:100px;top:85%;left:8%;animation:orbit-c 19s ease-in-out infinite;"></span>
+  <span class="orbit blob" style="width:260px;height:260px;top:8%;left:92%;animation:orbit-a 32s ease-in-out infinite reverse;"></span>
+  <span class="orbit ring" style="width:70px;height:70px;top:38%;left:1%;animation:orbit-b 21s ease-in-out infinite;"></span>
+</div>
 <div class="wrap">
   <div class="brand"><span class="mark">Kizuna</span><span class="tag">Resilience Report</span></div>
   <div class="repo">{{ repo }}</div>
