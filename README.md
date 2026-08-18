@@ -1,5 +1,7 @@
 # Kizuna
 
+[![Tests](https://github.com/swastigupta8/kizuna/actions/workflows/test.yml/badge.svg)](https://github.com/swastigupta8/kizuna/actions/workflows/test.yml)
+
 I kept running into the same idea while reading about SRE postmortems: teams almost always say "we should have caught this at design time," but there's no widely-used tool that actually does that for reliability, the way `terraform plan`, security scanners, and test coverage gates already do for their own domains. So I built one.
 
 **Kizuna reads a `docker-compose.yml`, scores the architecture for resilience, explains what's wrong in plain English, and can automatically fail a GitHub pull request before a fragile change ever merges.**
@@ -96,7 +98,7 @@ cp .env.example .env   # add your own GEMINI_API_KEY
 .venv\Scripts\python -m uvicorn main:app --reload
 ```
 
-Then visit `http://127.0.0.1:8000`. Run the tests with `.venv\Scripts\python -m pytest` — 47 of them, all mocking the LLM boundary, so none need a real API key to pass.
+Then visit `http://127.0.0.1:8000`. Run the tests with `.venv\Scripts\python -m pytest` — 52 of them, all mocking the LLM boundary, so none need a real API key to pass.
 
 ## A few design decisions worth knowing about
 
